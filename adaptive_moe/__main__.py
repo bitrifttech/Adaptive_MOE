@@ -75,7 +75,7 @@ def parse_args():
 
 
 def main():
-    """Main entry point for the Adaptive MoE system."""
+    """Execute the main entry point for the Adaptive MoE system."""
     args = parse_args()
 
     # Load configuration

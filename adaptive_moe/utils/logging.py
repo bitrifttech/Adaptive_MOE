@@ -27,6 +27,14 @@ class ColoredFormatter(logging.Formatter):
     }
 
     def format(self, record):
+        """Format the specified record with colors.
+
+        Args:
+            record: LogRecord instance containing all information about the log event.
+
+        Returns:
+            Formatted log record with appropriate color codes.
+        """
         levelname = record.levelname
         if levelname in self.COLORS:
             levelname_color = (
