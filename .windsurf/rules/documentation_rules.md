@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Documentation Update Rules for Adaptive MoE Project
 
 ## Core Guidelines

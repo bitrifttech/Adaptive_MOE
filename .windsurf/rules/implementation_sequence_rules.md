@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Implementation Sequence Rules for Adaptive MoE Project
 
 ## Core Guidelines

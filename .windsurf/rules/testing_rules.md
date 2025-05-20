@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Testing Rules for Adaptive MoE Project
 
 ## Core Guidelines

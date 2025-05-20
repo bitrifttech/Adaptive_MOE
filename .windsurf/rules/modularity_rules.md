@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Modularity Rules for Adaptive MoE Project
 
 ## Core Guidelines

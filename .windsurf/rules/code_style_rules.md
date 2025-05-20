@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Code Style Rules for Adaptive MoE Project
 
 ## Core Guidelines

@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # AI-Assisted Development Guidelines for Adaptive MoE Project
 
 ## Core Guidelines

@@ -1,4 +1,4 @@
-# Adaptive MoE System Implementation Guide
+# Adaptive MoE System Technical Description
 
 ## Table of Contents
 1. [Project Overview](#project-overview)
@@ -753,65 +753,126 @@ def run_adaptive_moe_system():
    ```python
    def test_progressive_learning():
        # Start with no experts
+       
        assert len(router.expert_names) == 0
        
+       
+       
        # Process a Python coding question
+       
        query = "Write a function to implement binary search in Python"
+       
        response1 = process_query(query, base_model, router, experts, tokenizer)
        
+       
+       
        # Create and add Python expert
+       
        # ... code to create expert ...
        
+       
+       
        # Process same query again
+       
        response2 = process_query(query, base_model, router, experts, tokenizer)
        
+       
+       
        # Response should be different and better with expert
+       
        assert response1 != response2
+       
        # Evaluate quality improvement
+       
    ```
+   
+
 
 3. **Benchmark Evaluations**:
+
    - General coding problems from LeetCode
+   
    - Language-specific tasks (Python, JavaScript)
+   
    - Planning scenarios for software architecture
+   
    - Research questions about programming concepts
+   
+
 
 4. **Progressive Learning Tests**:
+
    - Introduce novel domains and verify expansion occurs
+   
    - Track performance improvements as experts are added
+   
    - Measure knowledge retention after multiple expert additions
+   
+
 
 ## Deployment Considerations
 
+
+
 ### Memory Management
 
+
+
 ```python
+
 def optimize_memory_usage():
+    
     # Only load experts into memory when needed
+    
     loaded_experts = {}
     
+    
+    
     def get_expert(expert_name):
+        
         if expert_name not in loaded_experts:
+            
             if len(loaded_experts) >= MAX_EXPERTS_IN_MEMORY:
+                
                 # Evict least recently used expert
+                
                 lru_expert = min(loaded_experts.items(), key=lambda x: x[1]['last_used'])
+                
                 del loaded_experts[lru_expert[0]]
+                
+            
             
             # Load expert from disk
+            
             expert_path = f"./experts/{expert_name}.bin"
+            
             expert = load_expert(expert_path)
+            
             loaded_experts[expert_name] = {
+                
                 'model': expert,
+                
                 'last_used': time.time()
+                
             }
+            
         else:
+            
             # Update last used timestamp
+            
             loaded_experts[expert_name]['last_used'] = time.time()
+            
+        
         
         return loaded_experts[expert_name]['model']
+        
+    
     
     return get_expert
+    
 ```
+
+
 
 ### Tracking & Analytics
 

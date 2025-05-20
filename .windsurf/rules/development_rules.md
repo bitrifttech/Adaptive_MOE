@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Development Environment Rules for Adaptive MoE Project
 
 ## Core Guidelines
