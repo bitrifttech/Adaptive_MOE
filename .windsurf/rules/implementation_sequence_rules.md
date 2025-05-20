@@ -12,7 +12,7 @@ trigger: always_on
 ## Implementation Sequence
 
 ### Phased Development Approach
-- Follow the project's 5-phase implementation plan strictly:
+- Follow the project's 5-phase implementation plan strictly, following all substeps as well:
   1. Foundation Setup
   2. Router Implementation
   3. Knowledge Gap Detection
