@@ -113,7 +113,7 @@ This document tracks the implementation progress of the Adaptive MoE project, fo
 
 ---
 
-### Step 6: Router Implementation
+### Step 1.5: Router Implementation
 **Status:** ✅ Complete (2025-05-20)
 
 **Implementation Details:**
@@ -131,14 +131,6 @@ This document tracks the implementation progress of the Adaptive MoE project, fo
 **Files Created/Modified:**
 - `adaptive_moe/router/router.py`
 - `tests/test_router.py`
-
-**Testing:**
-- Verified model loads correctly
-- Tested different precision modes
-- Validated model freezing
-
-**Files Created/Modified:**
-- `adaptive_moe/utils/model_utils.py`
 - `tests/test_model_loading.py`
 
 ---
@@ -179,27 +171,64 @@ This document tracks the implementation progress of the Adaptive MoE project, fo
 
 ## Phase 2: Router Implementation
 
-### Step 8: Uncertainty Router Architecture
-**Status:** 🔄 In Progress
+### Step 2.1: Implement Router Component
+**Status:** ✅ Complete (2025-05-20)
 
-**Implementation Plan:**
-- [ ] Create base router class
-- [ ] Implement confidence estimation
-- [ ] Add threshold-based routing
-- [ ] Integrate with model loading
+**Implementation Details:**
+- Created `UncertaintyRouter` class in `adaptive_moe/router/router.py`
+- Implemented confidence-based routing using a feedforward neural network
+- Added support for batch processing and dropout for regularization
+- Integrated with the existing model configuration system
 
-**Current Status:**
-- Basic structure defined
-- Configuration parameters specified
+**Testing:**
+- Added comprehensive tests in `tests/test_router.py`
+- Tested with various confidence thresholds and batch sizes
+- Verified correct routing behavior based on confidence scores
 
-**Next Steps:**
-- Complete implementation
-- Add tests
-- Document usage
-
-**Files to Modify:**
+**Files Created/Modified:**
 - `adaptive_moe/router/router.py`
 - `tests/test_router.py`
+
+## Phase 3: Expert Management System
+
+### Step 3.1: Implement Expert Manager
+**Status:** ✅ Complete (2025-05-20)
+
+**Implementation Details:**
+- Created `ExpertManager` class in `adaptive_moe/experts/expert_manager.py`
+- Implemented expert creation, loading, and caching using PEFT (Parameter-Efficient Fine-Tuning)
+- Added support for LoRA (Low-Rank Adaptation) for efficient fine-tuning
+- Integrated with the existing configuration system
+- Added memory management to handle multiple experts efficiently
+
+**Testing:**
+- Added comprehensive tests in `tests/test_expert_manager.py`
+- Verified expert creation, loading, and caching functionality
+- Tested memory management with multiple experts
+- Validated expert metadata storage and retrieval
+
+**Files Created/Modified:**
+- `adaptive_moe/experts/expert_manager.py`
+- `tests/test_expert_manager.py`
+- `adaptive_moe/utils/config.py` (updated with expert config)
+
+### Step 3.2: Expert Training Pipeline
+**Status:** 📝 Planned
+
+**Implementation Plan:**
+- [ ] Implement expert training loop
+- [ ] Add support for different training strategies
+- [ ] Integrate with dataset loading
+- [ ] Add evaluation metrics
+
+**Next Steps:**
+- Create training script
+- Implement data loading pipeline
+- Add evaluation framework
+
+**Files to Modify:**
+- `adaptive_moe/experts/trainer.py`
+- `tests/test_expert_training.py`
 
 ---
 
