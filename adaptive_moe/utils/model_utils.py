@@ -100,6 +100,17 @@ def save_model(
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
 
+    # Ensure generation config has valid pad_token_id
+    if hasattr(model, "generation_config") and model.generation_config is not None:
+        if hasattr(model, "config") and hasattr(model.config, "pad_token_id"):
+            model.generation_config.pad_token_id = model.config.pad_token_id
+        elif hasattr(model, "config") and hasattr(model.config, "eos_token_id"):
+            model.generation_config.pad_token_id = model.config.eos_token_id
+        else:
+            model.generation_config.pad_token_id = (
+                0  # Default to 0 if nothing else is available
+            )
+
     logger.info(f"Saving model to {save_dir}")
     model.save_pretrained(save_dir, **kwargs)
 
