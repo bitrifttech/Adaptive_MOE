@@ -2,6 +2,10 @@
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ["adaptive_moe"]
+package-dir = { "" = "." }
+
 [project]
 name = "adaptive-moe"
 version = "0.1.0"
@@ -9,7 +13,7 @@ description = "Adaptive Mixture of Experts system with dynamic expert creation"
 authors = [
     {name = "Your Name", email = "your.email@example.com"}
 ]
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
     "torch>=2.0.1",

@@ -1,4 +1,5 @@
 """Tests for the router component."""
+
 import pytest
 import torch
 

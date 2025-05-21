@@ -36,13 +36,29 @@ class ModelConfig(DataClassJsonMixin):
 
 @dataclass
 class RouterConfig(DataClassJsonMixin):
-    """Configuration for the router component."""
+    """Configuration for the router component.
 
-    confidence_threshold: float = 0.7
+    Attributes:
+        expert_selection_threshold: Minimum confidence score to consider an expert
+        hidden_size: Dimensionality of the input features (should match base model)
+        router_learning_rate: Learning rate for router parameters (default: 1e-5)
+        router_weight_decay: Weight decay for router parameters (default: 0.01)
+        router_dropout: Dropout probability for the router network
+        max_experts_per_token: Max experts per token (default: 2)
+        capacity_factor: Factor for expert capacity calculation
+        router_type: Type of router to use ('threshold' or 'topk')
+        use_router_bias: Whether to include bias terms in router layers
+    """
+
+    expert_selection_threshold: float = 0.3
     hidden_size: int = 4096  # Should match base model's hidden size
     router_learning_rate: float = 1e-5
     router_weight_decay: float = 0.01
     router_dropout: float = 0.1
+    max_experts_per_token: int = 4
+    capacity_factor: float = 1.25
+    router_type: str = "threshold"  # 'threshold' or 'topk'
+    use_router_bias: bool = True
 
 
 @dataclass
@@ -54,7 +70,7 @@ class ExpertConfig(DataClassJsonMixin):
     lora_dropout: float = 0.05
     target_modules: List[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
     max_experts_in_memory: int = 5
-    expert_cache_dir: str = "expert_cache"
+    expert_cache_dir: str = ".cache/expert_cache"
 
 
 @dataclass

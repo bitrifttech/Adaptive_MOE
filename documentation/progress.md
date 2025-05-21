@@ -117,21 +117,40 @@ This document tracks the implementation progress of the Adaptive MoE project, fo
 **Status:** ✅ Complete (2025-05-20)
 
 **Implementation Details:**
-- Implemented `UncertaintyRouter` class for confidence-based routing
-- Added support for batch processing of hidden states
-- Integrated dropout for regularization
-- Added comprehensive test suite
+- Implemented `MultiExpertRouter` class for threshold-based multi-expert routing
+- Added support for selecting multiple experts per token based on learned gating values
+- Implemented load balancing to ensure uniform expert utilization
+- Added comprehensive test suite with 100% test coverage
+- Deprecated `UncertaintyRouter` in favor of the new `MultiExpertRouter`
+
+**Key Features:**
+- Configurable expert selection threshold
+- Maximum experts per token constraint
+- Load balancing loss for better expert utilization
+- Efficient batch processing of hidden states
+- Support for both training and inference modes
 
 **Testing:**
-- Added `test_router.py` with unit tests for all router functionality
-- Verified correct behavior with different input shapes
+- Added `test_multi_expert_router.py` with comprehensive test coverage
+- Verified correct behavior with different input shapes and batch sizes
 - Tested threshold-based expert selection logic
-- Confirmed proper handling of batch inputs
+- Validated load balancing loss calculation
+- Confirmed proper handling of edge cases (e.g., no experts selected)
+
+**Configuration Updates:**
+- Added new parameters to `RouterConfig`:
+  - `expert_selection_threshold`: Minimum confidence score to select an expert
+  - `max_experts_per_token`: Maximum number of experts to use per token
+  - `capacity_factor`: Multiplier for expert capacity
+  - `router_type`: Type of router to use ('threshold' or 'topk')
+  - `use_router_bias`: Whether to include bias terms in router layers
 
 **Files Created/Modified:**
 - `adaptive_moe/router/router.py`
-- `tests/test_router.py`
-- `tests/test_model_loading.py`
+- `adaptive_moe/router/__init__.py`
+- `adaptive_moe/utils/config.py`
+- `tests/test_multi_expert_router.py`
+- `documentation/progress.md`
 
 ---
 
@@ -243,12 +262,20 @@ This document tracks the implementation progress of the Adaptive MoE project, fo
 ---
 
 ### Step 9: Router Training
-**Status:** 📝 Planned
+**Status:** 🔄 In Progress (2025-05-20)
 
 **Implementation Plan:**
-- [ ] Implement training loop
-- [ ] Add evaluation metrics
+- [x] Design threshold-based routing architecture
+- [ ] Implement training loop with multi-expert support
+- [ ] Add evaluation metrics for multi-expert routing
 - [ ] Create training data pipeline
+- [ ] Implement dynamic expert loading and combination
+
+**Key Features:**
+- Threshold-based expert selection (0-N experts per input)
+- Weighted combination of multiple expert outputs
+- Efficient expert loading and caching
+- Support for dynamic computation graphs
 
 ---
 
@@ -256,9 +283,13 @@ This document tracks the implementation progress of the Adaptive MoE project, fo
 **Status:** 📝 Planned
 
 **Implementation Plan:**
-- [ ] Define evaluation metrics
-- [ ] Create test suite
-- [ ] Benchmark performance
+- [ ] Define evaluation metrics for multi-expert routing
+  - Expert utilization statistics
+  - Routing confidence distributions
+  - Performance vs. computation tradeoffs
+- [ ] Create test suite for routing behavior
+- [ ] Benchmark performance with varying thresholds
+- [ ] Measure impact on model quality and inference speed
 
 ---
 

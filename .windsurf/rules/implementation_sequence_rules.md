@@ -45,6 +45,7 @@ trigger: always_on
   - Documentation is updated
   - The component meets all requirements
 - Before starting a new component, ensure the current one is fully functional
+- Once the current component is implemented, tests are passing, and documentation is updated. Commit the changes.
 
 ### Error Handling Strategy
 - Implement basic happy path functionality first
