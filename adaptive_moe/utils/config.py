@@ -23,7 +23,7 @@ class LoggingConfig(DataClassJsonMixin):
 class ModelConfig(DataClassJsonMixin):
     """Configuration for model-related settings."""
 
-    base_model_id: str = "mistralai/Mistral-7B-v0.1"
+    base_model_id: str = "NousResearch/Yarn-Mistral-7b-128k"
     tokenizer_name: Optional[str] = None
     torch_dtype: str = "float16"
     device_map: str = "auto"
