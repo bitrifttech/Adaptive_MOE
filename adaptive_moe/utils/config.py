@@ -81,6 +81,41 @@ class TrainingConfig(DataClassJsonMixin):
 
 
 @dataclass
+class TrainerConfig(DataClassJsonMixin):
+    """Configuration for the expert trainer.
+
+    This configuration is specifically designed for the ExpertTrainer class
+    and includes settings for both training and evaluation.
+    """
+
+    # Expert training configuration
+    per_device_train_batch_size: int = 8  # Batch size per device for training
+    per_device_eval_batch_size: int = 8  # Batch size per device for evaluation
+    num_train_epochs: int = 3  # Number of training epochs
+    learning_rate: float = 5e-5  # Learning rate for training
+    weight_decay: float = 0.01  # Weight decay for optimization
+    warmup_steps: int = 0  # Number of warmup steps for learning rate scheduler
+    logging_steps: int = 10  # Log every X updates steps
+    evaluation_strategy: str = "epoch"  # Evaluation strategy to adopt
+    save_strategy: str = "epoch"  # The checkpoint save strategy to adopt
+    load_best_model_at_end: bool = True  # Whether to load the best model found
+    metric_for_best_model: str = "eval_loss"  # The metric to compare models
+    greater_is_better: bool = False  # Whether better models have higher metric
+    early_stopping_patience: int = 3  # Eval calls without improvement to stop
+    early_stopping_threshold: float = 0.0  # Stop when metric doesn't improve by this
+    gradient_accumulation_steps: int = 1  # Steps to accumulate before backward pass
+    # The scheduler type to use (linear, cosine, cosine_with_restarts,
+    # polynomial, constant, constant_with_warmup)
+    lr_scheduler_type: str = "linear"
+
+    def __post_init__(self):
+        """Validate configuration values."""
+        assert self.learning_rate > 0, "Learning rate must be positive"
+        assert self.per_device_train_batch_size > 0, "Batch size must be positive"
+        assert 0 <= self.warmup_ratio <= 1, "Warmup ratio must be between 0 and 1"
+
+
+@dataclass
 class AdaptiveMoEConfig(DataClassJsonMixin):
     """Main configuration class for the Adaptive MoE system."""
 

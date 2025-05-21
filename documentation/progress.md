@@ -213,22 +213,32 @@ This document tracks the implementation progress of the Adaptive MoE project, fo
 - `adaptive_moe/utils/config.py` (updated with expert config)
 
 ### Step 3.2: Expert Training Pipeline
-**Status:** 📝 Planned
+**Status:** ✅ Complete (2025-05-20)
 
-**Implementation Plan:**
-- [ ] Implement expert training loop
-- [ ] Add support for different training strategies
-- [ ] Integrate with dataset loading
-- [ ] Add evaluation metrics
+**Implementation Details:**
+- Implemented `ExpertTrainer` class for training expert models with LoRA
+- Added support for dataset loading and preprocessing
+- Implemented training loop with learning rate scheduling and checkpointing
+- Added evaluation metrics and progress tracking
+- Integrated with the existing `ExpertManager` for model management
+- Added comprehensive test coverage
 
-**Next Steps:**
-- Create training script
-- Implement data loading pipeline
-- Add evaluation framework
+**Key Features:**
+- Supports both training and evaluation modes
+- Implements gradient accumulation and mixed precision training
+- Includes learning rate scheduling with warmup
+- Saves checkpoints and training state
+- Tracks training metrics and logs progress
 
-**Files to Modify:**
+**Files Created/Modified:**
 - `adaptive_moe/experts/trainer.py`
-- `tests/test_expert_training.py`
+- `tests/test_expert_trainer.py`
+
+**Testing:**
+- Added unit tests for trainer initialization
+- Tested training loop with a small dataset
+- Verified checkpoint saving and loading
+- Tested evaluation metrics
 
 ---
 
