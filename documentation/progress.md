@@ -111,6 +111,27 @@ This document tracks the implementation progress of the Adaptive MoE project, fo
 - `tests/test_yarn_mistral_loading.py`
 - Updated `adaptive_moe/utils/config.py` with quantization support
 
+---
+
+### Step 6: Router Implementation
+**Status:** ✅ Complete (2025-05-20)
+
+**Implementation Details:**
+- Implemented `UncertaintyRouter` class for confidence-based routing
+- Added support for batch processing of hidden states
+- Integrated dropout for regularization
+- Added comprehensive test suite
+
+**Testing:**
+- Added `test_router.py` with unit tests for all router functionality
+- Verified correct behavior with different input shapes
+- Tested threshold-based expert selection logic
+- Confirmed proper handling of batch inputs
+
+**Files Created/Modified:**
+- `adaptive_moe/router/router.py`
+- `tests/test_router.py`
+
 **Testing:**
 - Verified model loads correctly
 - Tested different precision modes
