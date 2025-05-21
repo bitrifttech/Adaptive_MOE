@@ -13,40 +13,80 @@ trigger: always_on
 
 ### Progress Tracking
 
-- Update `documentation/progress.md` after every code change or feature implementation
-- Each update should include:
-  - Date and time of the update
-  - Reference to the relevant section in the implementation plan
-  - Summary of changes made
-  - Current implementation status
-  - Next steps or pending items
-
-- Format for progress updates:
+#### File Structure
+- Maintain `documentation/progress.md` as the single source of truth for project progress
+- Follow this structure:
   ```markdown
-  ## [Date] - [Feature/Component Name]
-  
-  **Implementation Plan Reference:** Phase X, Step Y
-  
-  **Changes Made:**
-  - Implemented [specific functionality]
-  - Added [component/class/method]
-  - Modified [existing component] to support [new functionality]
-  
+  # [Project Name] - Implementation Progress
+
+  ## Status Key
+  - ✅ **Complete** - Feature is implemented and tested
+  - 🔄 **In Progress** - Work has started but is not complete
+  - 🔍 **Under Review** - Implementation complete, awaiting review
+  - 🐛 **Bug Fixing** - Feature implemented but has known issues
+  - 📝 **Planned** - Scheduled but not started
+  - ⏸️ **On Hold** - Started but paused for some reason
+
+  ---
+
+  ## Phase X: [Phase Name]
+
+  ### Step X.Y: [Step Name]
+  **Status:** [Status Emoji] [Status Text] (YYYY-MM-DD)
+
+  **Implementation Details:**
+  - [ ] Task 1
+  - [ ] Task 2
+  - [ ] Task 3
+
   **Current Status:**
-  - Phase X is [percentage]% complete
-  - [Component] is ready for testing
-  - [Feature] is fully implemented and tested
-  
+  - Current progress details
+  - Any blockers or issues
+
   **Next Steps:**
-  - Implement [next feature]
-  - Test [pending functionality]
-  - Address [known limitations]
+  - Immediate next actions
+  - Dependencies
+
+  **Files Created/Modified:**
+  - List of affected files
+  
+  ---
+  
+  ## Recent Changes
+  
+  ### [YYYY-MM-DD] [Change Summary]
+  - Detail 1
+  - Detail 2
+  - Detail 3
   ```
 
-- Each entry should clearly indicate which phase and step of the implementation plan is being addressed
-- Include specific details about what was implemented, not just generic descriptions
-- Be honest about implementation status and note any deviations from the plan
-- When multiple components are affected, organize the update by component
+#### Update Guidelines
+- Update after every significant code change or feature implementation
+- Each update must include:
+  - Reference to the implementation plan section
+  - Specific changes made
+  - Current status with dates
+  - Next steps
+  - Affected files
+
+#### Status Updates
+- Be specific about what was completed
+- Include relevant metrics or test results when available
+- Note any blockers or dependencies
+- Keep updates concise but informative
+- Update the status emoji and date when status changes
+
+#### Implementation Details
+- Document specific changes made
+- Include code snippets when helpful
+- Reference related issues or PRs
+- Note any deviations from the plan
+
+#### File Maintenance
+- Keep the file organized by phases and steps
+- Use consistent formatting
+- Remove or archive completed items when they become irrelevant
+- Ensure all links are working
 
 ### Bug Tracking
 
