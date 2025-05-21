@@ -117,7 +117,25 @@ This document tracks the implementation progress of the Adaptive MoE project, fo
 **Status:** ✅ Complete (2025-05-20)
 
 **Implementation Details:**
-- Implemented `MultiExpertRouter` class for threshold-based multi-expert routing
+- Implemented `MultiExpertRouter` with configurable threshold-based gating
+- Added support for multiple experts per token (default: 4)
+- Integrated load balancing loss with configurable weight (default: 0.01)
+- Implemented capacity factor (default: 1.25) for expert buffer sizing
+
+**Configuration:**
+```yaml
+router:
+  # Expert selection parameters
+  expert_selection_threshold: 0.3  # Minimum gating value to select an expert
+  max_experts_per_token: 4        # Maximum experts to route to per token
+  capacity_factor: 1.25           # Buffer for expert capacity
+  load_balancing_weight: 0.01     # Weight for load balancing loss term
+```
+
+**Testing:**
+- Verified expert selection based on threshold with various configurations
+- Confirmed load balancing between experts using auxiliary loss
+- Tested with 1-8 experts per token
 - Added support for selecting multiple experts per token based on learned gating values
 - Implemented load balancing to ensure uniform expert utilization
 - Added comprehensive test suite with 100% test coverage

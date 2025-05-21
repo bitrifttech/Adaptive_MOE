@@ -17,45 +17,45 @@
 This guide details the implementation of an adaptive Mixture of Experts (MoE) system using the Mistral 7B foundation model with progressive knowledge acquisition. The system will start with only the base model and a router, dynamically creating and adding experts as knowledge gaps are identified, with an initial focus on problem-solving and coding domains.
 
 ### Key System Features:
-- Frozen Mistral 7B base model
-- Confidence-based router for determining base model adequacy
-- Dynamic expert creation when knowledge gaps are detected
-- Task-oriented experts implemented as LoRA adapters (10-50M parameters each)
-- Transparent attribution of expert contributions
+- Frozen base model with threshold-based routing
+- Configurable expert selection threshold (default: 0.3)
+- Support for multiple experts per token (configurable, default: 4)
+- Load balancing between experts to prevent token collapse
+- Dynamic expert routing based on learned gating values
+- Efficient computation with capacity factor (default: 1.25x)
 
 ## System Architecture
 
 ```
-Initial System:
-                                         
-User Query → Mistral 7B → Router → Response
-(Problem     (Frozen)    (Confidence)
- Solving)                     
-                            ↓                               
-                    Confidence < 0.7                        
-                            ↓                               
-                   Expert Creation Pipeline
-                            ↓
-                     Data Request Generation
-                     (Direct Specification)
+                                         ┌───────────────────────────────┐
+                                         │        Expert Selection       │
+                                         │  (Threshold-based Gating)     │
+                                         └───────────────┬───────────────┘
+                                                         │
+                                         ┌───────────────▼───────────────┐
+                                         │        MoE Layer             │
+                                         │  (Token-level Routing)        │
+                                         └───────┬───────────────┬───────┘
+                                                 │               │
+                               ┌─────────────────┘               └─────────────────┐
+                               │                                     │
+                     ┌─────────▼─────────┐                 ┌─────────▼─────────┐
+                     │     Expert 1       │                 │     Expert N       │
+                     │  (LoRA Adapter)    │      ...        │  (LoRA Adapter)    │
+                     └─────────┬─────────┘                 └─────────┬─────────┘
+                               │                                     │
+                               └─────────────────┬─────────────────────┘
+                                                 │
+                                         ┌───────▼───────────────┐
+User Query → Base Model → Router ───────►│   Output Integration   ├─────→ Response
+   (Input)   (Frozen)    (Gating)         │  (Weighted Summation) │     (With Attribution)
+                                         └───────────────────────┘
 
-After Adding Experts:
-                                         ┌─── Expert 1 ───┐
-                                         │   (LoRA, 10-50M)│
-                                         │                 │
-User Query → Mistral 7B → Router     ───┼─── Expert 2 ───┼─→ Integration → Response
-(Problem     (Frozen)    (Confidence)    │   (LoRA, 10-50M)│    + Attribution
- Solving)                                │                 │
-                                         └─── Expert N ───┘
-                                          (Added as needed)
-                            
-                            ↓                                ↑
-                    Confidence < 0.7                         │
-                            ↓                                │
-                   Expert Creation Pipeline                  │
-                            ↓                                │
-                     Data Request Generation ───────────────┘
-                     (Direct Specification)
+Configuration Parameters:
+- expert_selection_threshold: 0.3  # Minimum gating value to select an expert
+- max_experts_per_token: 4         # Maximum experts per token
+- capacity_factor: 1.25            # Buffer for expert capacity
+- hidden_size: 4096                # Dimensionality of hidden states
 ```
 
 ## Implementation Roadmap
