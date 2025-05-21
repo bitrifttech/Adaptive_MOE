@@ -59,6 +59,7 @@ class RouterConfig(DataClassJsonMixin):
     capacity_factor: float = 1.25
     router_type: str = "threshold"  # 'threshold' or 'topk'
     use_router_bias: bool = True
+    num_experts: int = 4  # Number of expert models to use
 
 
 @dataclass

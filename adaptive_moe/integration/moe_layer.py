@@ -135,6 +135,28 @@ class MoELayer(nn.Module):
                 for expert_idx, weight in zip(selected, weights):
                     expert = self.experts[expert_idx]
                     expert_out = expert(token_hidden)
+
+                    # Extract the last_hidden_state if the output is a
+                    # ModelOutput object
+                    if hasattr(expert_out, "last_hidden_state"):
+                        expert_out = expert_out.last_hidden_state
+
+                    # Ensure the expert output has the right shape [1, hidden_size]
+                    if len(expert_out.shape) == 3:  # [batch, seq_len, hidden]
+                        if (
+                            expert_out.size(1) > 1
+                        ):  # If sequence length > 1, take the last token
+                            expert_out = expert_out[:, -1, :]
+                        else:
+                            expert_out = expert_out.squeeze(1)
+                    elif len(expert_out.shape) == 2:  # [batch, hidden]
+                        if expert_out.size(0) > 1:  # If batch > 1, take the first item
+                            expert_out = expert_out[0].unsqueeze(0)
+
+                    # Ensure we're not broadcasting incorrectly
+                    if expert_out.shape != token_hidden.shape:
+                        expert_out = expert_out.view_as(token_hidden)
+
                     token_output += weight * expert_out
 
                 # Store the weighted sum of expert outputs
