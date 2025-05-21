@@ -97,8 +97,19 @@ This document tracks the implementation progress of the Adaptive MoE project, fo
 
 **Implementation Details:**
 - Implemented `load_base_model` function
-- Added support for different precision modes
+- Added support for different precision modes (FP16, 4-bit, 8-bit)
 - Integrated model freezing
+- Added comprehensive model loading test with TinyLlama
+- Verified model inference works as expected
+
+**Testing:**
+- Added `test_yarn_mistral_loading.py` with model loading and inference test
+- Verified model loads correctly with different configurations
+- Confirmed basic text generation works
+
+**Files Created/Modified:**
+- `tests/test_yarn_mistral_loading.py`
+- Updated `adaptive_moe/utils/config.py` with quantization support
 
 **Testing:**
 - Verified model loads correctly
