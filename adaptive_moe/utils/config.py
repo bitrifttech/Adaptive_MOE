@@ -1,6 +1,5 @@
 """Configuration management for the Adaptive MoE system."""
 
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Union
@@ -90,6 +89,8 @@ class TrainingConfig(DataClassJsonMixin):
     eval_steps: int = 100
     max_grad_norm: float = 1.0
     max_steps: int = -1
+    max_seq_length: int = 128  # Maximum sequence length for tokenization
+    save_epochs: int = 1  # Save a checkpoint every N epochs
     fp16: bool = True
     bf16: bool = False
     optim: str = "adamw_torch"
@@ -180,6 +181,25 @@ def load_config(config_path: Optional[Union[str, Path]] = None) -> AdaptiveMoECo
     Returns:
         An instance of AdaptiveMoEConfig.
     """
-    if config_path is not None and os.path.exists(config_path):
-        return AdaptiveMoEConfig.from_yaml(config_path)
-    return AdaptiveMoEConfig()
+    if config_path is None:
+        return AdaptiveMoEConfig()
+
+    with open(config_path, "r") as f:
+        config_dict = yaml.safe_load(f)
+
+    return AdaptiveMoEConfig.from_dict(config_dict)
+
+
+def save_config(config: AdaptiveMoEConfig, output_path: Union[str, Path]) -> None:
+    """Save configuration to a YAML file.
+
+    Args:
+        config: Configuration object to save.
+        output_path: Path where to save the YAML configuration file.
+    """
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    config_dict = config.to_dict()
+    with open(output_path, "w") as f:
+        yaml.dump(config_dict, f, default_flow_style=False, sort_keys=False)

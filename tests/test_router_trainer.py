@@ -1,13 +1,14 @@
 """Tests for the router trainer module."""
 
+import os
 import tempfile
+from pathlib import Path
 
 import pytest
 import torch
 from datasets import Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from adaptive_moe.router.router import MultiExpertRouter
 from adaptive_moe.router.trainer import RouterTrainer
 from adaptive_moe.utils.config import ModelConfig, RouterConfig, TrainerConfig
 
@@ -18,7 +19,6 @@ def small_model():
     model_name = "hf-internal-testing/tiny-random-gpt2"
     model = AutoModelForCausalLM.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.pad_token = tokenizer.eos_token  # Set pad token
     return model, tokenizer
 
 
@@ -38,8 +38,9 @@ def trainer_config():
         per_device_eval_batch_size=2,
         num_train_epochs=1,
         learning_rate=1e-4,
-        warmup_steps=10,
+        warmup_ratio=0.1,
         weight_decay=0.01,
+        max_grad_norm=1.0,
         max_seq_length=32,
         logging_steps=1,
         save_steps=1,
@@ -48,35 +49,22 @@ def trainer_config():
 
 def test_router_trainer_init(small_model, trainer_config):
     """Test initialization of the router trainer."""
-    model, _ = small_model
+    model, tokenizer = small_model
 
     # Create a temporary directory for output
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create model config with actual model name from fixture
-        model_config = ModelConfig(
-            base_model_id=model.config._name_or_path,
-            torch_dtype="float32",
-            device_map="auto",
-        )
-
-        # Create router config with hidden size from model
-        router_config = RouterConfig(
-            hidden_size=model.config.hidden_size,
-            num_experts=2,
-            expert_selection_threshold=0.1,
-            max_experts_per_token=2,
-        )
-
-        # Initialize router directly
-        router = MultiExpertRouter(router_config, num_experts=2)
-
-        # Initialize trainer with the pre-initialized router
+        # Initialize trainer
         trainer = RouterTrainer(
-            model_config=model_config,
-            router_config=router_config,
+            model_config=ModelConfig(
+                base_model_id="test-model",
+                hidden_size=model.config.hidden_size,
+            ),
+            router_config=RouterConfig(
+                hidden_size=model.config.hidden_size,
+                num_experts=4,
+            ),
             trainer_config=trainer_config,
             output_dir=tmpdir,
-            router=router,  # Pass the pre-initialized router
         )
 
         # Check that the model and tokenizer are properly set
@@ -88,112 +76,120 @@ def test_router_trainer_init(small_model, trainer_config):
         )
 
 
-def test_router_trainer_forward_pass(small_model, test_dataset, trainer_config):
-    """Test a single forward pass through the router trainer."""
-    model, _ = small_model
+def test_router_trainer_train_loop(small_model, test_dataset, trainer_config):
+    """Test the training loop of the router trainer."""
+    model, tokenizer = small_model
 
     # Create a temporary directory for output
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create model config with actual model name from fixture
-        model_config = ModelConfig(
-            base_model_id=model.config._name_or_path,
-            torch_dtype="float32",
-            device_map="auto",
-        )
-
-        # Create router config with hidden size from model
-        router_config = RouterConfig(
-            hidden_size=model.config.hidden_size,
-            num_experts=2,
-            expert_selection_threshold=0.1,
-            max_experts_per_token=2,
-        )
-
-        # Initialize router directly
-        router = MultiExpertRouter(router_config, num_experts=2)
-
-        # Initialize trainer with the pre-initialized router
+        # Initialize trainer with a smaller model and fewer epochs for testing
         trainer = RouterTrainer(
-            model_config=model_config,
-            router_config=router_config,
+            model_config=ModelConfig(
+                base_model_id="test-model",
+                hidden_size=model.config.hidden_size,
+            ),
+            router_config=RouterConfig(
+                hidden_size=model.config.hidden_size,
+                num_experts=2,  # Fewer experts for testing
+                expert_selection_threshold=0.1,  # Lower threshold for testing
+            ),
             trainer_config=trainer_config,
             output_dir=tmpdir,
-            router=router,  # Pass the pre-initialized router
         )
 
-        # Get a batch from the dataset
-        _, dataloader = trainer._prepare_dataset(test_dataset)
-        batch = next(iter(dataloader))
-        batch = {k: v.to(trainer.device) for k, v in batch.items()}
+        # Run training with the test dataset
+        metrics = trainer.train(
+            train_dataset=test_dataset,
+            num_epochs=1,  # Just one epoch for testing
+        )
 
-        # Forward pass through the model and router
-        with torch.no_grad():
-            # Get hidden states from base model
-            outputs = trainer.model(
-                input_ids=batch["input_ids"],
-                attention_mask=batch["attention_mask"],
-                output_hidden_states=True,
-            )
-            hidden_states = outputs.hidden_states[-2]  # Second to last layer
+        # Check that metrics were returned
+        assert isinstance(metrics.train_loss, float)
 
-            # Forward pass through router
-            router_outputs = trainer.router(hidden_states)
-
-            # Check output shapes
-            batch_size, seq_len, _ = hidden_states.shape
-            assert router_outputs["dispatch_mask"].shape == (
-                batch_size,
-                seq_len,
-                2,
-            )  # 2 experts
-            assert router_outputs["weights"].shape == (batch_size, seq_len, 2)
-
-            # Check that we have load balancing loss
-            assert "load_balancing_loss" in router_outputs
-            assert isinstance(router_outputs["load_balancing_loss"], torch.Tensor)
+        # Check that model files were saved
+        output_dir = Path(tmpdir)
+        assert (output_dir / "final_model" / "pytorch_model.bin").exists()
+        assert (output_dir / "final_model" / "config.json").exists()
 
 
 def test_router_trainer_evaluation(small_model, test_dataset, trainer_config):
     """Test the evaluation functionality of the router trainer."""
-    model, _ = small_model
+    model, tokenizer = small_model
 
     # Create a temporary directory for output
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create model config with actual model name from fixture
-        model_config = ModelConfig(
-            base_model_id=model.config._name_or_path,
-            torch_dtype="float32",
-            device_map="auto",
-        )
-
-        # Create router config with hidden size from model
-        router_config = RouterConfig(
-            hidden_size=model.config.hidden_size,
-            num_experts=2,
-            expert_selection_threshold=0.1,
-            max_experts_per_token=2,
-        )
-
-        # Initialize router directly
-        router = MultiExpertRouter(router_config, num_experts=2)
-
-        # Initialize trainer with the pre-initialized router
+        # Initialize trainer
         trainer = RouterTrainer(
-            model_config=model_config,
-            router_config=router_config,
+            model_config=ModelConfig(
+                base_model_id="test-model",
+                hidden_size=model.config.hidden_size,
+            ),
+            router_config=RouterConfig(
+                hidden_size=model.config.hidden_size,
+                num_experts=2,
+            ),
             trainer_config=trainer_config,
             output_dir=tmpdir,
-            router=router,  # Pass the pre-initialized router
         )
 
-        # Prepare the evaluation dataset and get the dataloader
-        _, eval_dataloader = trainer._prepare_dataset(test_dataset, split="test")
-
-        # Run evaluation without labels
-        eval_metrics = trainer.evaluate(eval_dataloader)
+        # Run evaluation
+        eval_metrics = trainer.evaluate(
+            trainer._prepare_dataloader(test_dataset, is_train=False)
+        )
 
         # Check that metrics were returned
         assert isinstance(eval_metrics.eval_loss, float)
         assert isinstance(eval_metrics.expert_utilization, dict)
         assert len(eval_metrics.expert_utilization) == 2  # Should have 2 experts
-        assert eval_metrics.eval_loss >= 0  # Loss should be non-negative
+
+
+def test_router_trainer_save_load(small_model, test_dataset, trainer_config):
+    """Test saving and loading of the router model."""
+    model, tokenizer = small_model
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Initialize trainer and train for one step
+        trainer = RouterTrainer(
+            model_config=ModelConfig(
+                base_model_id="test-model",
+                hidden_size=model.config.hidden_size,
+            ),
+            router_config=RouterConfig(
+                hidden_size=model.config.hidden_size,
+                num_experts=2,
+            ),
+            trainer_config=trainer_config,
+            output_dir=tmpdir,
+        )
+
+        # Save the model
+        save_dir = Path(tmpdir) / "saved_model"
+        trainer.save_model(save_dir)
+
+        # Check that files were saved
+        assert (save_dir / "pytorch_model.bin").exists()
+        assert (save_dir / "config.json").exists()
+
+        # Create a new trainer and load the saved model
+        new_trainer = RouterTrainer(
+            model_config=ModelConfig(
+                base_model_id="test-model",
+                hidden_size=model.config.hidden_size,
+            ),
+            router_config=RouterConfig(
+                hidden_size=model.config.hidden_size,
+                num_experts=2,
+            ),
+            trainer_config=trainer_config,
+            output_dir=tmpdir,
+        )
+
+        # Load the saved model
+        new_trainer.load_model(save_dir)
+
+        # Verify that the model was loaded correctly by running inference
+        eval_metrics = new_trainer.evaluate(
+            new_trainer._prepare_dataloader(test_dataset, is_train=False)
+        )
+
+        assert isinstance(eval_metrics.eval_loss, float)

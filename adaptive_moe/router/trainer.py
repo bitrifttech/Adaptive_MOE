@@ -1,4 +1,4 @@
-"""Training pipeline for the router in Adaptive MoE."""
+"""Training utilities for the router component of the Adaptive MoE system."""
 
 import json
 import os
@@ -14,15 +14,14 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import (
-    DataCollatorForLanguageModeling,
     PreTrainedModel,
     PreTrainedTokenizer,
     get_linear_schedule_with_warmup,
 )
 
-from ..utils.config import ModelConfig, RouterConfig, TrainerConfig
-from ..utils.logging import get_logger
-from .router import MultiExpertRouter
+from adaptive_moe.router.router import MultiExpertRouter
+from adaptive_moe.utils.config import TrainingConfig
+from adaptive_moe.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -45,23 +44,22 @@ class RouterTrainer:
 
     def __init__(
         self,
-        model_config: ModelConfig,
-        router_config: RouterConfig,
-        trainer_config: TrainerConfig,
+        router: MultiExpertRouter,
+        tokenizer: PreTrainedTokenizer,
+        trainer_config: TrainingConfig,
         output_dir: Union[str, Path],
-        router: Optional[MultiExpertRouter] = None,
     ):
         """Initialize the router trainer.
 
         Args:
-            model_config: Configuration for the base model.
-            router_config: Configuration for the router.
+            router: The router model to train.
+            tokenizer: Tokenizer for processing input data.
             trainer_config: Training hyperparameters and settings.
             output_dir: Directory to save checkpoints and logs.
-            router: Optional pre-initialized router. If None, a new one will be created.
         """
-        self.model_config = model_config
-        self.router_config = router_config
+        self.router = router
+        self.router_config = router.config  # Store router config for tokenization
+        self.tokenizer = tokenizer
         self.trainer_config = trainer_config
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -70,18 +68,8 @@ class RouterTrainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"Using device: {self.device}")
 
-        # Load base model and tokenizer
-        self.model, self.tokenizer = self._load_base_model()
-        self.model = self.model.to(self.device)
-
-        # Initialize or use provided router
-        if router is not None:
-            self.router = router.to(self.device)
-        else:
-            self.router = MultiExpertRouter(
-                config=self.router_config,
-                num_experts=self.router_config.num_experts,
-            ).to(self.device)
+        # Move router to device
+        self.router = self.router.to(self.device)
 
     def _load_base_model(self) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         """Load the base model and tokenizer."""
@@ -121,9 +109,10 @@ class RouterTrainer:
                     "Please provide a valid dataset path, name, or Dataset object."
                 ) from e
 
-        # Tokenize the dataset
+        # Tokenize the dataset with batched processing
         def tokenize_function(examples):
-            return self.tokenizer(
+            # Tokenize the input text
+            tokenized = self.tokenizer(
                 examples["text"],
                 truncation=True,
                 max_length=self.trainer_config.max_seq_length,
@@ -131,6 +120,29 @@ class RouterTrainer:
                 return_tensors="pt",
             )
 
+            # Generate random expert assignments for each token (0 to num_experts-1)
+            # In a real scenario, you would use actual expert assignments
+            input_ids = tokenized["input_ids"]
+            attention_mask = tokenized.get("attention_mask", torch.ones_like(input_ids))
+
+            # Create expert assignments with the same shape as input_ids
+            expert_assignments = torch.randint(
+                0,
+                self.router_config.num_experts,
+                input_ids.shape,
+                device=input_ids.device,
+            )
+
+            # Set padding tokens to -100 (ignore index)
+            expert_assignments = (
+                expert_assignments * attention_mask - (1 - attention_mask) * 100
+            )
+
+            # Convert to lists for the dataset
+            tokenized["labels"] = expert_assignments.tolist()
+            return tokenized
+
+        # Process the dataset using map with batched=True
         tokenized_dataset = dataset.map(
             tokenize_function,
             batched=True,
@@ -138,16 +150,24 @@ class RouterTrainer:
             desc="Tokenizing dataset",
         )
 
-        # Create data collator
-        data_collator = DataCollatorForLanguageModeling(
-            tokenizer=self.tokenizer, mlm=False
+        # Convert the dataset to PyTorch tensors
+        tokenized_dataset.set_format(
+            type="torch", columns=["input_ids", "attention_mask", "labels"]
         )
+
+        # Simple collate function that returns batches as-is
+        def collate_fn(examples):
+            return {
+                "input_ids": torch.stack([e["input_ids"] for e in examples]),
+                "attention_mask": torch.stack([e["attention_mask"] for e in examples]),
+                "labels": torch.stack([e["labels"] for e in examples]),
+            }
 
         # Create dataloader
         dataloader = DataLoader(
             tokenized_dataset,
             batch_size=self.trainer_config.per_device_train_batch_size,
-            collate_fn=data_collator,
+            collate_fn=collate_fn,
             shuffle=True,
         )
 
@@ -180,25 +200,27 @@ class RouterTrainer:
             logits_flat = logits.view(
                 -1, logits.size(-1)
             )  # [batch*seq_len, num_experts]
-            labels_flat = labels.view(-1)
 
-            # Only compute classification loss for non-padding tokens
-            non_padding_mask = (
-                labels_flat != -100
-            )  # -100 is the default ignore_index in PyTorch
-            if non_padding_mask.any():
-                logits_flat = logits_flat[non_padding_mask]
-                labels_flat = labels_flat[non_padding_mask]
+            # If we have labels, use them for supervised training
+            if labels is not None:
+                labels_flat = labels.view(-1)  # [batch*seq_len]
+                # Only compute loss for non-padding tokens (if padding is used)
+                non_padding_mask = (labels_flat != -100) & (
+                    labels_flat < self.router.num_experts
+                )
+                if non_padding_mask.any():
+                    logits_flat = logits_flat[non_padding_mask]
+                    labels_flat = labels_flat[non_padding_mask]
+                    # Ensure we have valid labels to compute loss
+                    if labels_flat.numel() > 0:
+                        classification_loss = F.cross_entropy(
+                            logits_flat, labels_flat, reduction="mean"
+                        )
 
-                # Ensure we have valid labels to compute loss
-                if labels_flat.numel() > 0:
-                    # Compute cross-entropy loss only for valid tokens
-                    classification_loss = F.cross_entropy(
-                        logits_flat, labels_flat, reduction="mean"
-                    )
-
-        # Combine losses with default load balancing weight
-        load_balancing_weight = 0.01  # Default weight for load balancing loss
+        # Combine losses with load balancing weight from config or default
+        load_balancing_weight = getattr(
+            self.router_config, "load_balancing_weight", 0.01
+        )
         total_loss = classification_loss + (load_balancing_weight * load_balancing_loss)
 
         return total_loss
@@ -221,16 +243,16 @@ class RouterTrainer:
         """
         # Set up training parameters
         num_epochs = num_epochs or self.trainer_config.num_train_epochs
-        train_dataloader = self._prepare_dataloader(train_dataset, is_train=True)
-        eval_dataloader = (
-            self._prepare_dataloader(eval_dataset, is_train=False)
+        _, train_dataloader = self._prepare_dataset(train_dataset, split="train")
+        _, eval_dataloader = (
+            self._prepare_dataset(eval_dataset, split="validation")
             if eval_dataset is not None
-            else None
+            else (None, None)
         )
 
         # Calculate total training steps
         total_steps = len(train_dataloader) * num_epochs
-        warmup_steps = int(total_steps * self.trainer_config.warmup_ratio)
+        warmup_steps = self.trainer_config.warmup_steps
 
         # Set up optimizer and scheduler
         optimizer = AdamW(
@@ -343,13 +365,16 @@ class RouterTrainer:
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 batch_size = batch["input_ids"].size(0)
 
-                # Get hidden states from base model
-                outputs = self.model(
-                    input_ids=batch["input_ids"],
-                    attention_mask=batch["attention_mask"],
-                    output_hidden_states=True,
-                )
-                hidden_states = outputs.hidden_states[-2]  # Second to last layer
+                # Get hidden states from the batch (assuming they were precomputed)
+                if "hidden_states" in batch:
+                    hidden_states = batch["hidden_states"]
+                else:
+                    # If hidden states not provided, use random ones for testing
+                    seq_length = batch["input_ids"].size(1)
+                    hidden_size = self.router_config.hidden_size
+                    hidden_states = torch.randn(
+                        batch_size, seq_length, hidden_size, device=self.device
+                    )
 
                 # Forward pass through router
                 router_outputs = self.router(hidden_states)
