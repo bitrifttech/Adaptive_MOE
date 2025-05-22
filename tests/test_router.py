@@ -3,25 +3,41 @@
 import pytest
 import torch
 
-from adaptive_moe.router.router import UncertaintyRouter
+from adaptive_moe.router.router import MultiExpertRouter
 from adaptive_moe.utils.config import RouterConfig
 
 
 def test_router_initialization():
     """Test that the router initializes correctly."""
-    config = RouterConfig(hidden_size=768, confidence_threshold=0.7, router_dropout=0.1)
-    router = UncertaintyRouter(config)
+    config = RouterConfig(
+        hidden_size=768,
+        expert_selection_threshold=0.3,
+        max_experts_per_token=4,
+        capacity_factor=1.25,
+        use_router_bias=False,
+        router_type="threshold",
+    )
+    num_experts = 4
+    router = MultiExpertRouter(config, num_experts)
 
     assert router is not None
-    assert isinstance(router, UncertaintyRouter)
+    assert isinstance(router, MultiExpertRouter)
     assert router.hidden_size == 768
-    assert router.confidence_threshold == 0.7
+    assert router.threshold == 0.3
 
 
 def test_router_forward():
     """Test the forward pass of the router."""
-    config = RouterConfig(hidden_size=768, confidence_threshold=0.7, router_dropout=0.1)
-    router = UncertaintyRouter(config)
+    config = RouterConfig(
+        hidden_size=768,
+        expert_selection_threshold=0.3,
+        max_experts_per_token=4,
+        capacity_factor=1.25,
+        use_router_bias=False,
+        router_type="threshold",
+    )
+    num_experts = 4
+    router = MultiExpertRouter(config, num_experts)
 
     # Create test input
     batch_size = 2
@@ -30,52 +46,38 @@ def test_router_forward():
     hidden_states = torch.randn(batch_size, seq_len, hidden_size)
 
     # Forward pass
-    confidence_scores = router(hidden_states)
+    router_output = router(hidden_states)
 
-    # Check output shape and values
-    assert confidence_scores.shape == (batch_size,)
-    assert torch.all(confidence_scores >= 0.0) and torch.all(confidence_scores <= 1.0)
+    # Check output contains expected keys
+    assert "dispatch_mask" in router_output
+    assert "weights" in router_output
+    assert "load_balancing_loss" in router_output
 
-
-def test_should_use_expert():
-    """Test the should_use_expert method."""
-    config = RouterConfig(hidden_size=768, confidence_threshold=0.7, router_dropout=0.1)
-    router = UncertaintyRouter(config)
-
-    # Create test input
-    seq_len = 10
-    hidden_size = 768
-    hidden_states = torch.randn(1, seq_len, hidden_size)
-
-    # Test should_use_expert
-    use_expert, confidence = router.should_use_expert(hidden_states)
-
-    # Check return types and values
-    assert isinstance(use_expert, bool)
-    assert isinstance(confidence, float)
-    assert 0.0 <= confidence <= 1.0
-
-    # Verify threshold logic
-    if confidence < 0.7:
-        assert use_expert is True
-    else:
-        assert use_expert is False
+    # Check output shapes
+    assert router_output["dispatch_mask"].shape == (batch_size, seq_len, num_experts)
+    assert router_output["weights"].shape == (batch_size, seq_len, num_experts)
+    assert isinstance(router_output["load_balancing_loss"], torch.Tensor)
 
 
 def test_router_batch_processing():
     """Test that the router handles batch processing correctly."""
-    config = RouterConfig(hidden_size=768, confidence_threshold=0.7, router_dropout=0.1)
-    router = UncertaintyRouter(config)
+    config = RouterConfig(
+        hidden_size=768,
+        expert_selection_threshold=0.3,
+        max_experts_per_token=4,
+        capacity_factor=1.25,
+        use_router_bias=False,
+        router_type="threshold",
+    )
+    num_experts = 4
+    router = MultiExpertRouter(config, num_experts)
 
-    # Create batch input
-    batch_sizes = [1, 2, 4]
-    seq_len = 10
-    hidden_size = 768
-
-    for batch_size in batch_sizes:
-        hidden_states = torch.randn(batch_size, seq_len, hidden_size)
-        confidence_scores = router(hidden_states)
-        assert confidence_scores.shape == (batch_size,)
+    # Test with different batch sizes
+    for batch_size in [1, 2, 4, 8]:
+        hidden_states = torch.randn(batch_size, 10, 768)
+        router_output = router(hidden_states)
+        assert router_output["dispatch_mask"].shape == (batch_size, 10, num_experts)
+        assert router_output["weights"].shape == (batch_size, 10, num_experts)
 
 
 if __name__ == "__main__":

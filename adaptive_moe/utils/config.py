@@ -124,12 +124,17 @@ class TrainerConfig(DataClassJsonMixin):
     # The scheduler type to use (linear, cosine, cosine_with_restarts,
     # polynomial, constant, constant_with_warmup)
     lr_scheduler_type: str = "linear"
+    warmup_ratio: float = 0.1  # Ratio of total training steps for warmup
+    max_seq_length: int = 128  # Maximum sequence length for tokenization
+    save_steps: int = 500  # Save checkpoint every X updates steps
 
     def __post_init__(self):
         """Validate configuration values."""
         assert self.learning_rate > 0, "Learning rate must be positive"
         assert self.per_device_train_batch_size > 0, "Batch size must be positive"
+        assert self.warmup_steps >= 0, "Warmup steps must be non-negative"
         assert 0 <= self.warmup_ratio <= 1, "Warmup ratio must be between 0 and 1"
+        assert self.max_seq_length > 0, "Maximum sequence length must be positive"
 
 
 @dataclass

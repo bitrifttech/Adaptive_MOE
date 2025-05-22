@@ -34,9 +34,12 @@ class TestMultiExpertRouter:
 
         # Check router network architecture
         assert isinstance(router.router_network, torch.nn.Sequential)
-        assert len(router.router_network) == 2  # Linear + Dropout
+        assert len(router.router_network) == 3  # Linear + ReLU + Linear
         assert router.router_network[0].in_features == router_config.hidden_size
-        assert router.router_network[0].out_features == num_experts
+        assert router.router_network[0].out_features == router_config.hidden_size // 2
+        assert isinstance(router.router_network[1], torch.nn.ReLU)
+        assert router.router_network[2].in_features == router_config.hidden_size // 2
+        assert router.router_network[2].out_features == num_experts
 
     def test_forward_pass(self, router_config):
         """Test forward pass with basic input."""

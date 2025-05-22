@@ -8,7 +8,7 @@ def test_import_adaptive_moe():
 
 def test_import_router():
     """Test that the router module can be imported."""
-    from adaptive_moe.router import UncertaintyRouter  # noqa: F401
+    from adaptive_moe.router import MultiExpertRouter  # noqa: F401
 
 
 def test_import_utils():

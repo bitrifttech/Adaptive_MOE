@@ -52,7 +52,8 @@ class TestExpertTrainer:
             weight_decay=0.01,
             warmup_steps=1,
             logging_steps=1,
-            max_seq_length=64,
+            gradient_accumulation_steps=1,
+            save_steps=1,  # Save checkpoint after every step for testing
         )
 
     @pytest.fixture
@@ -114,18 +115,17 @@ class TestExpertTrainer:
             model_config=model_config,
             expert_config=expert_config,
             trainer_config=trainer_config,
-            output_dir=tmp_path,
+            output_dir=str(tmp_path),  # Convert to string for compatibility
         )
 
         # Create a temporary directory for the test dataset
-        dataset_path = tmp_path / "test_dataset"
-        dataset_path.mkdir()
+        dataset_path = str(tmp_path / "test_dataset")
         test_dataset.save_to_disk(dataset_path)
 
         try:
             # Load datasets from disk
-            train_dataset = load_from_disk(dataset_path / "train")
-            eval_dataset = load_from_disk(dataset_path / "test")
+            train_dataset = load_from_disk(os.path.join(dataset_path, "train"))
+            eval_dataset = load_from_disk(os.path.join(dataset_path, "test"))
 
             # Train for one epoch
             expert_id = "test_expert"
@@ -175,17 +175,16 @@ class TestExpertTrainer:
             model_config=model_config,
             expert_config=expert_config,
             trainer_config=trainer_config,
-            output_dir=tmp_path,
+            output_dir=str(tmp_path),  # Convert to string
         )
 
         # Create a temporary directory for the test dataset
-        dataset_path = tmp_path / "test_dataset"
-        dataset_path.mkdir()
+        dataset_path = str(tmp_path / "test_dataset")  # Convert to string
         test_dataset.save_to_disk(dataset_path)
 
         try:
             # Load dataset from disk and prepare dataloader
-            test_dataset = load_from_disk(dataset_path / "test")
+            test_dataset = load_from_disk(os.path.join(dataset_path, "test"))
             _, eval_dataloader = trainer._prepare_dataset(test_dataset, split="test")
 
             # Evaluate
@@ -210,23 +209,26 @@ class TestExpertTrainer:
         if os.environ.get("CI"):
             pytest.skip("Skipping checkpoint test in CI")
 
+        # Convert tmp_path to string for consistency
+        tmp_path_str = str(tmp_path)
+
         # Create trainer
         trainer = ExpertTrainer(
             model_config=model_config,
             expert_config=expert_config,
             trainer_config=trainer_config,
-            output_dir=tmp_path,
+            output_dir=tmp_path_str,
         )
 
         # Create a temporary directory for the test dataset
-        dataset_path = tmp_path / "test_dataset"
-        dataset_path.mkdir()
+        dataset_path = os.path.join(tmp_path_str, "test_dataset")
+        os.makedirs(dataset_path, exist_ok=True)
         test_dataset.save_to_disk(dataset_path)
 
         try:
             # Load datasets from disk
-            train_dataset = load_from_disk(dataset_path / "train")
-            eval_dataset = load_from_disk(dataset_path / "test")
+            train_dataset = load_from_disk(os.path.join(dataset_path, "train"))
+            eval_dataset = load_from_disk(os.path.join(dataset_path, "test"))
 
             # Train for one epoch to create a checkpoint
             expert_id = "test_checkpoint"
@@ -237,8 +239,8 @@ class TestExpertTrainer:
                 num_epochs=1,
             )
 
-            # Save a checkpoint
-            checkpoint_dir = tmp_path / f"checkpoint-{expert_id}-1"
+            # Define checkpoint directory
+            checkpoint_dir = os.path.join(tmp_path_str, f"checkpoint-{expert_id}-1")
 
             # Load the checkpoint
             loaded_model, metrics = trainer.load_checkpoint(expert_id, checkpoint_dir)
@@ -246,7 +248,7 @@ class TestExpertTrainer:
             # Verify loaded model and metrics
             assert loaded_model is not None
             assert isinstance(metrics, TrainingMetrics)
-            assert metrics.epoch == 1
+            assert metrics.epoch == 1  # 1-based epoch counter
             assert metrics.train_loss > 0
 
         finally:
